@@ -840,7 +840,7 @@ function RequestCard({ request, onUpdate }: { request: BloodRequestRow; onUpdate
                   <div className="mt-2 space-y-1 text-foreground">
                     {c.profile.display_name && <p>👤 {c.profile.display_name}</p>}
                     {c.profile.phone && <p className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> <a href={`tel:${c.profile.phone}`} className="text-primary underline">{c.profile.phone}</a></p>}
-                    {c.profile.emergency_contact_email && <p className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> <a href={`mailto:${c.profile.emergency_contact_email}`} className="text-primary underline">{c.profile.emergency_contact_email}</a></p>}
+                    {c.profile.email && <p className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> <a href={`mailto:${c.profile.email}`} className="text-primary underline">{c.profile.email}</a></p>}
                   </div>
                 )}
                 {c.status === "declined" && <p className="mt-1 text-xs text-muted-foreground">Donor declined — try another match.</p>}
