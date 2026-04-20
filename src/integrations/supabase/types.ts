@@ -324,6 +324,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_accepted_donor_contact: {
+        Args: { _request_id: string }
+        Returns: {
+          display_name: string
+          donor_user_id: string
+          email: string
+          phone: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
