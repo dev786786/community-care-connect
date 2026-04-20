@@ -783,7 +783,7 @@ function RequestsTab({ userId }: { userId: string }) {
 }
 
 function RequestCard({ request, onUpdate }: { request: BloodRequestRow; onUpdate: (id: string, status: "fulfilled" | "cancelled") => void }) {
-  const [contacts, setContacts] = useState<(ContactRequestRow & { profile?: { display_name: string | null; phone: string | null; emergency_contact_email: string | null } | null })[]>([]);
+  const [contacts, setContacts] = useState<(ContactRequestRow & { profile?: { display_name: string | null; phone: string | null; email: string | null } | null })[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -793,15 +793,14 @@ function RequestCard({ request, onUpdate }: { request: BloodRequestRow; onUpdate
         .eq("request_id", request.id)
         .order("created_at", { ascending: false });
       const rows = (data ?? []) as ContactRequestRow[];
-      // Fetch profiles for accepted only — RLS still protects others
+      // For accepted ones, fetch contact via security-definer RPC (RLS-safe)
       const accepted = rows.filter((c) => c.status === "accepted");
-      const profiles: Record<string, { display_name: string | null; phone: string | null; emergency_contact_email: string | null } | null> = {};
+      const profiles: Record<string, { display_name: string | null; phone: string | null; email: string | null }> = {};
       if (accepted.length > 0) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, phone, emergency_contact_email")
-          .in("user_id", accepted.map((c) => c.donor_user_id));
-        for (const p of profs ?? []) profiles[(p as any).user_id] = { display_name: (p as any).display_name, phone: (p as any).phone, emergency_contact_email: (p as any).emergency_contact_email };
+        const { data: revealed } = await supabase.rpc("get_accepted_donor_contact", { _request_id: request.id });
+        for (const p of (revealed ?? []) as Array<{ donor_user_id: string; display_name: string | null; phone: string | null; email: string | null }>) {
+          profiles[p.donor_user_id] = { display_name: p.display_name, phone: p.phone, email: p.email };
+        }
       }
       setContacts(rows.map((c) => ({ ...c, profile: profiles[c.donor_user_id] ?? null })));
     })();
