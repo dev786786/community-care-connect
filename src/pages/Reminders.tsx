@@ -13,8 +13,13 @@ import {
   TrendingUp,
   Power,
   PowerOff,
+  Bell,
+  BellOff,
+  BellRing,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { scheduleDoseNotifications } from "@/lib/doseScheduler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
