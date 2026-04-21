@@ -13,8 +13,13 @@ import {
   TrendingUp,
   Power,
   PowerOff,
+  Bell,
+  BellOff,
+  BellRing,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { scheduleDoseNotifications } from "@/lib/doseScheduler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +63,7 @@ const STATUS_LABEL: Record<DoseStatus, string> = {
 
 const Reminders = () => {
   const { user, loading: authLoading } = useAuth();
+  const notifications = useNotifications();
   const [meds, setMeds] = useState<Medication[]>([]);
   const [doses, setDoses] = useState<DoseWithMed[]>([]);
   const [adherence, setAdherence] = useState<AdherenceStats | null>(null);
@@ -83,6 +89,19 @@ const Reminders = () => {
       .catch((e) => toast({ title: "Couldn't load reminders", description: e.message, variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [user, authLoading]);
+
+  // Schedule browser notifications for pending doses whenever the list changes.
+  useEffect(() => {
+    if (notifications.permission !== "granted" || doses.length === 0) return;
+    const cleanup = scheduleDoseNotifications(doses, {
+      notify: notifications.notify,
+      onFire: () => {
+        // Re-fetch so the dose appears in the right state if user acted via OS UI.
+        if (user) fetchTodayDoses(user.id).then(setDoses).catch(() => {});
+      },
+    });
+    return cleanup;
+  }, [doses, notifications.permission, notifications.notify, user]);
 
   const handleStatus = async (doseId: string, status: DoseStatus) => {
     const prev = doses;
@@ -160,6 +179,26 @@ const Reminders = () => {
         </Dialog>
       </header>
 
+      <NotificationBanner
+        permission={notifications.permission}
+        supported={notifications.supported}
+        onEnable={async () => {
+          const result = await notifications.request();
+          if (result === "granted") {
+            notifications.notify("Reminders enabled", {
+              body: "We'll nudge you when each dose is due.",
+            });
+            toast({ title: "Notifications enabled" });
+          } else if (result === "denied") {
+            toast({
+              title: "Notifications blocked",
+              description: "Enable them in your browser site settings to get dose nudges.",
+              variant: "destructive",
+            });
+          }
+        }}
+      />
+
       {loading ? (
         <div className="mt-12 grid place-items-center text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -193,6 +232,58 @@ const Reminders = () => {
           </aside>
         </div>
       )}
+    </div>
+  );
+};
+
+const NotificationBanner = ({
+  permission,
+  supported,
+  onEnable,
+}: {
+  permission: "default" | "granted" | "denied" | "unsupported";
+  supported: boolean;
+  onEnable: () => void;
+}) => {
+  if (!supported) return null;
+  if (permission === "granted") {
+    return (
+      <div className="mt-6 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary-soft/40 px-4 py-3 text-sm">
+        <BellRing className="h-4 w-4 text-primary" />
+        <span className="text-foreground/80">
+          Browser reminders are on. Keep this tab open to get a nudge at each dose time.
+        </span>
+      </div>
+    );
+  }
+  if (permission === "denied") {
+    return (
+      <div className="mt-6 flex items-start gap-3 rounded-2xl border border-emergency/20 bg-emergency/5 px-4 py-3 text-sm">
+        <BellOff className="mt-0.5 h-4 w-4 text-emergency" />
+        <div className="text-foreground/80">
+          Notifications are blocked for this site. Enable them in your browser's site settings to
+          get dose reminders.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center">
+      <div className="flex items-start gap-3 sm:items-center">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+          <Bell className="h-4 w-4" />
+        </span>
+        <div className="text-sm">
+          <p className="font-medium">Get a nudge at dose time</p>
+          <p className="text-muted-foreground">
+            Allow browser notifications so you don't miss a reminder while this tab is open.
+          </p>
+        </div>
+      </div>
+      <Button onClick={onEnable} className="rounded-full sm:ml-auto" size="sm">
+        <Bell className="h-4 w-4" />
+        Enable notifications
+      </Button>
     </div>
   );
 };
