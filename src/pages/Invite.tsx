@@ -318,20 +318,6 @@ const StatCard = ({
     </Card>
   );
 };
-  return (
-    <Card className="border-border/60">
-      <CardContent className="flex items-center gap-4 p-5">
-        <span className={`grid h-12 w-12 place-items-center rounded-2xl ${toneClasses}`}>
-          <Icon className="h-5 w-5" />
-        </span>
-        <div>
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-          <div className="font-display text-3xl">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 const StatusBadge = ({ status }: { status: "pending" | "completed" }) => {
   if (status === "completed") {
