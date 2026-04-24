@@ -172,10 +172,11 @@ const Invite = () => {
       </div>
 
       {/* Stats */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Total Invites" value={stats.total} tone="primary" />
         <StatCard icon={CheckCircle2} label="Active Referrals" value={stats.completed} tone="success" />
         <StatCard icon={Clock} label="Pending Verifications" value={stats.pending} tone="warning" />
+        <StatCard icon={Coins} label="Coins Earned" value={coins} tone="gold" />
       </div>
 
       {/* Sharing */}
