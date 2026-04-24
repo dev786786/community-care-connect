@@ -295,13 +295,29 @@ const StatCard = ({
   icon: typeof Users;
   label: string;
   value: number;
-  tone: "primary" | "success" | "warning";
+  tone: "primary" | "success" | "warning" | "gold";
 }) => {
   const toneClasses = {
     primary: "bg-primary-soft text-primary",
     success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    gold: "bg-yellow-500/10 text-yellow-500 dark:text-yellow-400",
   }[tone];
+  const valueClass = tone === "gold" ? "font-display text-3xl text-yellow-500" : "font-display text-3xl";
+  return (
+    <Card className="border-border/60">
+      <CardContent className="flex items-center gap-4 p-5">
+        <span className={`grid h-12 w-12 place-items-center rounded-2xl ${toneClasses}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className={valueClass}>{value}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
   return (
     <Card className="border-border/60">
       <CardContent className="flex items-center gap-4 p-5">
