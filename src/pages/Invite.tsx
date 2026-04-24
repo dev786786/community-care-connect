@@ -80,6 +80,34 @@ const Invite = () => {
     };
   }, [user, authLoading]);
 
+  // Realtime: detect coin balance increases (e.g., from new referrals) and toast
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`profile-coins-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const next = (payload.new as { coins?: number }).coins ?? 0;
+          const prev = prevCoinsRef.current ?? 0;
+          if (next > prev) {
+            const earned = next - prev;
+            toast({
+              title: "Congratulations! 🎉",
+              description: `You just earned ${earned} coins for a successful referral`,
+            });
+          }
+          prevCoinsRef.current = next;
+          setCoins(next);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const link = useMemo(() => (code ? buildReferralLink(code) : ""), [code]);
 
   const stats = useMemo(() => {
