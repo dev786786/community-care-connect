@@ -99,7 +99,7 @@ const Invite = () => {
   const handleWhatsApp = () => {
     if (!link) return;
     const text = encodeURIComponent(
-      `I'm using LifeLink for medicine reminders, blood donor matching and a private health vault. Join me — it's free.\n\n${link}`,
+      `Hey! Join me on LifeLink to help our community. Use my invite link to sign up: ${link}`,
     );
     window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
