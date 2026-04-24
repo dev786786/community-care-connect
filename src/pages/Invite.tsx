@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, Link as LinkIcon, Copy, Share2, CheckCircle2, Clock, Sparkles, Loader2 } from "lucide-react";
+import { Users, Link as LinkIcon, Copy, Share2, CheckCircle2, Clock, Sparkles, Loader2, Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,12 @@ type ReferredProfile = {
 const Invite = () => {
   const { user, loading: authLoading } = useAuth();
   const [code, setCode] = useState<string | null>(null);
+  const [coins, setCoins] = useState<number>(0);
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, ReferredProfile>>({});
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const prevCoinsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -43,7 +45,7 @@ const Invite = () => {
     (async () => {
       setLoading(true);
       const [{ data: profile }, { data: refs }] = await Promise.all([
-        supabase.from("profiles").select("referral_code").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("referral_code, coins").eq("user_id", user.id).maybeSingle(),
         supabase
           .from("referrals")
           .select("id, referred_user_id, status, joined_at")
@@ -52,6 +54,9 @@ const Invite = () => {
       ]);
       if (!active) return;
       setCode(profile?.referral_code ?? null);
+      const initialCoins = (profile as { coins?: number } | null)?.coins ?? 0;
+      setCoins(initialCoins);
+      prevCoinsRef.current = initialCoins;
       const list = (refs ?? []) as ReferralRow[];
       setReferrals(list);
 
@@ -74,6 +79,34 @@ const Invite = () => {
       active = false;
     };
   }, [user, authLoading]);
+
+  // Realtime: detect coin balance increases (e.g., from new referrals) and toast
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`profile-coins-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const next = (payload.new as { coins?: number }).coins ?? 0;
+          const prev = prevCoinsRef.current ?? 0;
+          if (next > prev) {
+            const earned = next - prev;
+            toast({
+              title: "Congratulations! 🎉",
+              description: `You just earned ${earned} coins for a successful referral`,
+            });
+          }
+          prevCoinsRef.current = next;
+          setCoins(next);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const link = useMemo(() => (code ? buildReferralLink(code) : ""), [code]);
 
@@ -139,10 +172,11 @@ const Invite = () => {
       </div>
 
       {/* Stats */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Total Invites" value={stats.total} tone="primary" />
         <StatCard icon={CheckCircle2} label="Active Referrals" value={stats.completed} tone="success" />
         <StatCard icon={Clock} label="Pending Verifications" value={stats.pending} tone="warning" />
+        <StatCard icon={Coins} label="Coins Earned" value={coins} tone="gold" />
       </div>
 
       {/* Sharing */}
@@ -261,13 +295,15 @@ const StatCard = ({
   icon: typeof Users;
   label: string;
   value: number;
-  tone: "primary" | "success" | "warning";
+  tone: "primary" | "success" | "warning" | "gold";
 }) => {
   const toneClasses = {
     primary: "bg-primary-soft text-primary",
     success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    gold: "bg-yellow-500/10 text-yellow-500 dark:text-yellow-400",
   }[tone];
+  const valueClass = tone === "gold" ? "font-display text-3xl text-yellow-500" : "font-display text-3xl";
   return (
     <Card className="border-border/60">
       <CardContent className="flex items-center gap-4 p-5">
@@ -276,7 +312,7 @@ const StatCard = ({
         </span>
         <div>
           <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-          <div className="font-display text-3xl">{value}</div>
+          <div className={valueClass}>{value}</div>
         </div>
       </CardContent>
     </Card>
