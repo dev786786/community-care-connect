@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, Link as LinkIcon, Copy, Share2, CheckCircle2, Clock, Sparkles, Loader2 } from "lucide-react";
+import { Users, Link as LinkIcon, Copy, Share2, CheckCircle2, Clock, Sparkles, Loader2, Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,12 @@ type ReferredProfile = {
 const Invite = () => {
   const { user, loading: authLoading } = useAuth();
   const [code, setCode] = useState<string | null>(null);
+  const [coins, setCoins] = useState<number>(0);
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, ReferredProfile>>({});
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const prevCoinsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -43,7 +45,7 @@ const Invite = () => {
     (async () => {
       setLoading(true);
       const [{ data: profile }, { data: refs }] = await Promise.all([
-        supabase.from("profiles").select("referral_code").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("referral_code, coins").eq("user_id", user.id).maybeSingle(),
         supabase
           .from("referrals")
           .select("id, referred_user_id, status, joined_at")
@@ -52,6 +54,9 @@ const Invite = () => {
       ]);
       if (!active) return;
       setCode(profile?.referral_code ?? null);
+      const initialCoins = (profile as { coins?: number } | null)?.coins ?? 0;
+      setCoins(initialCoins);
+      prevCoinsRef.current = initialCoins;
       const list = (refs ?? []) as ReferralRow[];
       setReferrals(list);
 
